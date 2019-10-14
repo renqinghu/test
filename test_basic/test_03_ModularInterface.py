@@ -2,8 +2,6 @@ import requests
 import pytest
 import config
 import json
-import time
-import math
 
 
 class TestModularInterface(object):
@@ -24,6 +22,7 @@ class TestModularInterface(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         config.module_id = jobs["data"][0]["module_id"]
 
     def test_02_getmodule_id(self):
@@ -36,6 +35,8 @@ class TestModularInterface(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["module_id"] == config.module_id
 
     def test_03_postapimodule(self):
         '''创建模块[post] /api/module'''
@@ -50,6 +51,9 @@ class TestModularInterface(object):
         config.pprint(url, jobs,data)
         assert jobs["code"] == 201
         assert jobs["msg"] == "Created"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["name"] == self.name
+        assert jobs["data"]["nodes"] == ["node.MOBSDB01", "node.MOBSDB02"]
         config.module_id = jobs["data"]["module_id"]
 
     def test_03_getmodule_id(self):
@@ -62,6 +66,10 @@ class TestModularInterface(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["module_id"] == config.module_id
+        assert jobs["data"]["name"] == self.name
+        assert jobs["data"]["nodes"] == ["node.MOBSDB01", "node.MOBSDB02"]
         assert r.text.count(self.name) >= 1
 
     def test_04_modifymodule_id(self):
@@ -76,7 +84,11 @@ class TestModularInterface(object):
         jobs = r.json()
         config.pprint(url, jobs,data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["module_id"] == config.module_id
         assert jobs["data"]["name"] == "rqhtestDB02"
+        assert jobs["data"]["nodes"] == ["node.MOBSDB01", "node.MOBSDB02"]
 
     def test_04_getmodule_id(self):
         '''(验证修改模块内容是否成功)获取指定模块[get] /api/module/:module_id'''
@@ -88,6 +100,10 @@ class TestModularInterface(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["module_id"] == config.module_id
+        assert jobs["data"]["name"] == "rqhtestDB02"
+        assert jobs["data"]["nodes"] == ["node.MOBSDB01", "node.MOBSDB02"]
         assert r.text.count("rqhtestDB02") >= 1
 
     def test_05_deletemodule_id(self):
@@ -102,8 +118,7 @@ class TestModularInterface(object):
         jobs = r.json()
         config.pprint(url, jobs,data)
         assert jobs["code"] == 200
-        # assert json["msg"] == "Created"
-        # config.module_id = json["data"]["module_id"]
+        assert jobs["msg"] == "OK"
 
     def test_06_getmodule_id(self):
         '''(验证删除模块是否成功)获取指定模块[get] /api/module/:module_id'''

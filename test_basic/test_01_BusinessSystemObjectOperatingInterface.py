@@ -20,6 +20,8 @@ class TestAPIService(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
 
     def test_02_postapiservice(self):
         '''创建业务系统[post] api/service'''
@@ -31,6 +33,9 @@ class TestAPIService(object):
         config.pprint(url, jobs, data)
         config.service_id = jobs["data"]["service_id"]
         assert jobs["code"] == 201
+        assert jobs["msg"] == "Created"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["name"] == self.name
 
     def test_03_getservice_id(self):
         '''(验证创建业务是否成功)获获取业务系统信息[get] /api/service/:service_id'''
@@ -41,6 +46,8 @@ class TestAPIService(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         assert jobs["data"]["name"] == self.name
 
     def test_04_modifyservice_id(self):
@@ -67,7 +74,16 @@ class TestAPIService(object):
         jobs = r.json()
         config.pprint(url, jobs, data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         assert jobs["data"]["name"] == "test002"
+        assert jobs["data"]["monitored_kpi"] == ["kpi.mobilebanks.trans_volume", "kpi.mobilebanks.resp_time"]
+        assert jobs["data"]["modules"][0] == "5b078c2f4c7d9c44c44f79f8"
+        assert jobs["data"]["alert_rules"][0]["type"] == "frequency"
+        assert jobs["data"]["alert_rules"][0]["duration"] == 300
+        assert jobs["data"]["alert_rules"][0]["kpi_min_thr"] == 2
+        assert jobs["data"]["alert_rules"][0]["frequency"] == 10
+        assert jobs["data"]["receiver"]["email"][0] == "zjinn@bizseer.com"
 
     def test_04_getservice_id(self):
         '''(验证修改是否成功)获获取业务系统信息[get] /api/service/:service_id'''
@@ -78,7 +94,16 @@ class TestAPIService(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         assert jobs["data"]["name"] == "test002"
+        assert jobs["data"]["monitored_kpi"] == ["kpi.mobilebanks.trans_volume", "kpi.mobilebanks.resp_time"]
+        assert jobs["data"]["modules"][0] == "5b078c2f4c7d9c44c44f79f8"
+        assert jobs["data"]["alert_rules"][0]["type"] == "frequency"
+        assert jobs["data"]["alert_rules"][0]["duration"] == 300
+        assert jobs["data"]["alert_rules"][0]["kpi_min_thr"] == 2
+        assert jobs["data"]["alert_rules"][0]["frequency"] == 10
+        assert jobs["data"]["receiver"]["email"][0] == "zjinn@bizseer.com"
 
     def test_05_deleteservice_id(self):
         '''删除业务系统[delete] /api/service/:service_id'''
@@ -89,6 +114,7 @@ class TestAPIService(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
 
     def test_05_getservice_id(self):
         '''(验证删除是否成功)获获取业务系统信息[get] /api/service/:service_id'''

@@ -3,7 +3,6 @@ import pytest
 import config
 import json
 import time
-import math
 
 
 class TestMachineNode(object):
@@ -24,6 +23,7 @@ class TestMachineNode(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
 
     def test_02_putapinode(self):
         '''创建机器节点[put] /api/node/:node_key'''
@@ -35,6 +35,9 @@ class TestMachineNode(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 201
         assert jobs["msg"] == "Created"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["node_key"] == self.node_key
+        assert jobs["data"]["name"] == self.node_key
 
     def test_02_getapinode(self):
         '''(验证创建机器节点是否成功)获取机器节点列表[get] /api/node'''
@@ -46,6 +49,7 @@ class TestMachineNode(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         assert r.text.count("node.bztest001") >= 1
 
     def test_03_modifyapinode(self):
@@ -57,6 +61,9 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs, data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert jobs["data"]["node_key"] == self.node_key
         assert jobs["data"]["name"] == self.modigynode_key
 
     def test_03_getapinode(self):
@@ -69,7 +76,9 @@ class TestMachineNode(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
         assert r.text.count(self.modigynode_key) >= 1
+        assert r.text.count(self.node_key) >= 1
 
     def test_04_getapinodedata(self):
         '''获取机器节点多维数据[get] /api/node/:node_key/data'''
@@ -80,6 +89,8 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
 
     def test_05_postapinodedata(self):
         '''提交机器节点多维数据[post] /api/node/:node_key/data'''
@@ -104,6 +115,7 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs, data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
 
     def test_06_getapinodedata(self):
         '''获取机器节点多维数据表头[get] /api/node/:node_key/data/metric'''
@@ -114,6 +126,8 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
 
     # def test_07_getapinodedata(self):
     #     '''批量获取机器节点多维数据[get] /api/node/data'''
@@ -153,6 +167,7 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs, data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
 
     def test_09_getapinodedata(self):
         '''批量获取机器节点多维数据表头[get] /api/node/data/metric'''
@@ -163,6 +178,8 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs, data)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
 
     def test_10_deleteapinode(self):
         '''删除机器节点[delete] /api/node/:node_key'''
@@ -173,6 +190,7 @@ class TestMachineNode(object):
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
 
     def test_11_getapinode(self):
         '''(验证删除机器节点是否成功)获取机器节点列表[get] /api/node'''
@@ -184,4 +202,6 @@ class TestMachineNode(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
-        assert r.text.count("node.bztest001") >= 0
+        assert len(jobs["data"]) != 0
+        assert r.text.count(self.node_key) == 0
+        assert r.text.count(self.modigynode_key) == 0

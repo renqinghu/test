@@ -19,6 +19,5 @@ class GenerateAllureReport:
 
 
 if __name__ == '__main__':
-    GenerateAllureReport(".", "TestResult",
-                         "TestResult//Report").run()
+    GenerateAllureReport(".", "report","report").run()
 
