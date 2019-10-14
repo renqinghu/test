@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <style>body {
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 12px;
+	min-width: 1200px;
+	color: #999;
+}
+
+h1 {
+	font-size: 24px;
+	color: black;
+}
+
+h2 {
+	font-size: 16px;
+	color: black;
+}
+
+p {
+    color: black;
+}
+
+a {
+	color: #999;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+
+#environment td {
+	padding: 5px;
+	border: 1px solid #E6E6E6;
+}
+
+#environment tr:nth-child(odd) {
+	background-color: #f6f6f6;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed, .passed .col-result {
+	color: green;
+}
+span.skipped, span.xfailed, span.rerun, .skipped .col-result, .xfailed .col-result, .rerun .col-result {
+	color: orange;
+}
+span.error, span.failed, span.xpassed, .error .col-result, .failed .col-result, .xpassed .col-result  {
+	color: red;
+}
+
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+
+#results-table {
+	border: 1px solid #e6e6e6;
+	color: #999;
+	font-size: 12px;
+	width: 100%
+}
+
+#results-table th, #results-table td {
+	padding: 5px;
+	border: 1px solid #E6E6E6;
+	text-align: left
+}
+#results-table th {
+	font-weight: bold
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+
+.log:only-child {
+	height: inherit
+}
+.log {
+	background-color: #e6e6e6;
+	border: 1px solid #e6e6e6;
+	color: black;
+	display: block;
+	font-family: "Courier New", Courier, monospace;
+	height: 230px;
+	overflow-y: scroll;
+	padding: 5px;
+	white-space: pre-wrap
+}
+div.image {
+	border: 1px solid #e6e6e6;
+	float: right;
+	height: 240px;
+	margin-left: 5px;
+	overflow: hidden;
+	width: 320px
+}
+div.image img {
+	width: 320px
+}
+.collapsed {
+	display: none;
+}
+.expander::after {
+	content: " (show details)";
+	color: #BBB;
+	font-style: italic;
+	cursor: pointer;
+}
+.collapser::after {
+	content: " (hide details)";
+	color: #BBB;
+	font-style: italic;
+	cursor: pointer;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+	cursor: pointer;
+}
+
+.sort-icon {
+	font-size: 0px;
+	float: left;
+	margin-right: 5px;
+	margin-top: 5px;
+	/*triangle*/
+	width: 0;
+	height: 0;
+	border-left: 8px solid transparent;
+	border-right: 8px solid transparent;
+}
+
+.inactive .sort-icon {
+	/*finish triangle*/
+	border-top: 8px solid #E6E6E6;
+}
+
+.asc.active .sort-icon {
+	/*finish triangle*/
+	border-bottom: 8px solid #999;
+}
+
+.desc.active .sort-icon {
+	/*finish triangle*/
+	border-top: 8px solid #999;
+}
+</style></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function find_all(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sort_column(elem) {
+    toggle_sort_states(elem);
+    var colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    var key;
+    if (elem.classList.contains('numeric')) {
+        key = key_num;
+    } else if (elem.classList.contains('result')) {
+        key = key_result;
+    } else {
+        key = key_alpha;
+    }
+    sort_table(elem, key(colIndex));
+}
+
+function show_all_extras() {
+    find_all('.col-result').forEach(show_extras);
+}
+
+function hide_all_extras() {
+    find_all('.col-result').forEach(hide_extras);
+}
+
+function show_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.remove("collapsed");
+    expandcollapse.classList.remove("expander");
+    expandcollapse.classList.add("collapser");
+}
+
+function hide_extras(colresult_elem) {
+    var extras = colresult_elem.parentNode.nextElementSibling;
+    var expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.add("collapsed");
+    expandcollapse.classList.remove("collapser");
+    expandcollapse.classList.add("expander");
+}
+
+function show_filters() {
+    var filter_items = document.getElementsByClassName('filter');
+    for (var i = 0; i < filter_items.length; i++)
+        filter_items[i].hidden = false;
+}
+
+function add_collapse() {
+    // Add links for show/hide all
+    var resulttable = find('table#results-table');
+    var showhideall = document.createElement("p");
+    showhideall.innerHTML = '<a href="javascript:show_all_extras()">Show all details</a> / ' +
+                            '<a href="javascript:hide_all_extras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    find_all('.col-result').forEach(function(elem) {
+        var collapsed = get_query_parameter('collapsed') || 'Passed';
+        var extras = elem.parentNode.nextElementSibling;
+        var expandcollapse = document.createElement("span");
+        if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add("collapsed");
+            expandcollapse.classList.add("expander");
+        } else {
+            expandcollapse.classList.add("collapser");
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener("click", function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains("collapsed")) {
+                show_extras(event.currentTarget);
+            } else {
+                hide_extras(event.currentTarget);
+            }
+        });
+    })
+}
+
+function get_query_parameter(name) {
+    var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () {
+    reset_sort_headers();
+
+    add_collapse();
+
+    show_filters();
+
+    toggle_sort_states(find('.initial-sort'));
+
+    find_all('.sortable').forEach(function(elem) {
+        elem.addEventListener("click",
+                              function(event) {
+                                  sort_column(elem);
+                              }, false)
+    });
+
+};
+
+function sort_table(clicked, key_func) {
+    var rows = find_all('.results-table-row');
+    var reversed = !clicked.classList.contains('asc');
+    var sorted_rows = sort(rows, key_func, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    var thead = document.getElementById("results-table-head");
+    document.getElementById('results-table').remove();
+    var parent = document.createElement("table");
+    parent.id = "results-table";
+    parent.appendChild(thead);
+    sorted_rows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName("BODY")[0].appendChild(parent);
+}
+
+function sort(items, key_func, reversed) {
+    var sort_array = items.map(function(item, i) {
+        return [key_func(item), i];
+    });
+
+    sort_array.sort(function(a, b) {
+        var key_a = a[0];
+        var key_b = b[0];
+
+        if (key_a == key_b) return 0;
+
+        if (reversed) {
+            return (key_a < key_b ? 1 : -1);
+        } else {
+            return (key_a > key_b ? 1 : -1);
+        }
+    });
+
+    return sort_array.map(function(item) {
+        var index = item[1];
+        return items[index];
+    });
+}
+
+function key_alpha(col_index) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[col_index].firstChild.data.toLowerCase();
+    };
+}
+
+function key_num(col_index) {
+    return function(elem) {
+        return parseFloat(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function key_result(col_index) {
+    return function(elem) {
+        var strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+                       'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function reset_sort_headers() {
+    find_all('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    find_all('.sortable').forEach(function(elem) {
+        var icon = document.createElement("div");
+        icon.className = "sort-icon";
+        icon.textContent = "vvv";
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove("desc", "active");
+        elem.classList.add("asc", "inactive");
+    });
+}
+
+function toggle_sort_states(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        reset_sort_headers();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function is_all_rows_hidden(value) {
+  return value.hidden == false;
+}
+
+function filter_table(elem) {
+    var outcome_att = "data-test-result";
+    var outcome = elem.getAttribute(outcome_att);
+    class_outcome = outcome + " results-table-row";
+    var outcome_rows = document.getElementsByClassName(class_outcome);
+
+    for(var i = 0; i < outcome_rows.length; i++){
+        outcome_rows[i].hidden = !elem.checked;
+    }
+
+    var rows = find_all('.results-table-row').filter(is_all_rows_hidden);
+    var all_rows_hidden = rows.length == 0 ? true : false;
+    var not_found_message = document.getElementById("not-found-message");
+    not_found_message.hidden = !all_rows_hidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 14-Oct-2019 at 10:25:23 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v2.0.0</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Base URL</td>
+        <td></td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{&apos;pytest&apos;: &apos;5.1.2&apos;, &apos;py&apos;: &apos;1.8.0&apos;, &apos;pluggy&apos;: &apos;0.13.0&apos;}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Darwin-18.6.0-x86_64-i386-64bit</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{&apos;allure-pytest&apos;: &apos;2.8.5&apos;, &apos;html&apos;: &apos;2.0.0&apos;, &apos;bdd&apos;: &apos;3.2.1&apos;, &apos;base-url&apos;: &apos;1.4.1&apos;, &apos;cov&apos;: &apos;2.7.1&apos;, &apos;ordering&apos;: &apos;0.6&apos;, &apos;rerunfailures&apos;: &apos;7.0&apos;, &apos;assume&apos;: &apos;2.2.0&apos;, &apos;instafail&apos;: &apos;0.4.1&apos;, &apos;metadata&apos;: &apos;1.8.0&apos;}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.7.4</td></tr>
+      <tr>
+        <td>测试地址</td>
+        <td><a href="http://192.168.115.130:8080" target="_blank">http://192.168.115.130:8080</a></td></tr></table>
+    <h2>Summary</h2>
+    <p>测试人: 任庆虎</p>
+    <p>35 tests ran in 258.88 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">34 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>, <input checked="true" class="filter" data-test-result="rerun" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="rerun">0 rerun</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th>Description</th>
+          <th class="sortable time" col="time">Time</th>
+          <th class="sortable numeric" col="duration">Duration</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="5">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_04_postapievent_id</td>
+          <td>更新事件[post] /api/event/:event_id</td>
+          <td class="col-time">2019-10-14 02:25:21.698224</td>
+          <td class="col-duration">1.88</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log">self = &lt;test_04_EventObjectOperatingInterface.TestEventInterface object at 0x109322ad0&gt;<br/><br/>    def test_04_postapievent_id(self):<br/>        &#x27;&#x27;&#x27;更新事件[post] /api/event/:event_id&#x27;&#x27;&#x27;<br/>        url = config.base_url + &quot;/api/event/&quot; + config.event_id<br/>        headers = {&#x27;Content-Type&#x27;: &#x27;application/json&#x27;}<br/>        data = {<br/>            &quot;description&quot;: &quot;交易量出现异常&quot;,<br/>            &quot;update_time&quot;: int(time.time()),<br/>            &quot;finish&quot;: False,<br/>            &quot;anomaly_kpi&quot;: [<br/>                {<br/>                    &quot;kpi_key&quot;: &quot;kpi.mobilebank.trans_volume&quot;,<br/>                    &quot;kpi_name&quot;: &quot;手机银行交易量&quot;,<br/>                    &quot;description&quot;: &quot;500秒内出现20个异常点&quot;<br/>                }<br/>            ],<br/>        }<br/>        r = requests.post(url, data=json.dumps(data), headers=headers)<br/>        jobs = r.json()<br/>        config.pprint(url, jobs, data)<br/>&gt;       assert jobs[&quot;code&quot;] == 200<br/><span class="error">E       assert 404 == 200</span><br/><br/>test_04_EventObjectOperatingInterface.py:103: AssertionError<br/> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event/5da3dbe226816f7971eca1d1
+【请求参数】：
+{&#x27;description&#x27;: &#x27;交易量出现异常&#x27;, &#x27;update_time&#x27;: 1571019919, &#x27;finish&#x27;: False, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;description&#x27;: &#x27;500秒内出现20个异常点&#x27;}]}
+【返回结果】：
+{&#x27;code&#x27;: 404, &#x27;msg&#x27;: &#x27;Not Found&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_01_getapiservice</td>
+          <td>获取业务系统列表[get] api/service</td>
+          <td class="col-time">2019-10-14 02:21:09.545579</td>
+          <td class="col-duration">5.03</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;name&#x27;: &#x27;核心业务&#x27;, &#x27;created_time&#x27;: 1535092422, &#x27;monitored_kpi&#x27;: [&#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi.dashboard1.c&#x27;], &#x27;modules&#x27;: [&#x27;5d9d871026816f7971eca071&#x27;], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 2, &#x27;frequency&#x27;: 3}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;name&#x27;: &#x27;加密平台&#x27;, &#x27;created_time&#x27;: 1535096616, &#x27;monitored_kpi&#x27;: [&#x27;kpi.fluxrank.dep.trans&#x27;], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;frequency&#x27;: 3, &#x27;kpi_min_thr&#x27;: 1}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;name&#x27;: &#x27;test&#x27;, &#x27;created_time&#x27;: 1564038629, &#x27;monitored_kpi&#x27;: [&#x27;kpi.dashboard1.a&#x27;, &#x27;kpi.dashboard1.c&#x27;], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d6f8b8426816f07585375f0&#x27;, &#x27;name&#x27;: &#x27;jkj&#x27;, &#x27;created_time&#x27;: 1567591300, &#x27;monitored_kpi&#x27;: [&#x27;kpi.dashboard1.b&#x27;], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d6f986a26816f07585375f6&#x27;, &#x27;name&#x27;: &#x27;dong&#x27;, &#x27;created_time&#x27;: 1567594602, &#x27;monitored_kpi&#x27;: [&#x27;kpi.dashboard1.a&#x27;, &#x27;kpi.dashboard2.a&#x27;], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 2, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c36f526816f7971ec9fea&#x27;, &#x27;name&#x27;: &#x27;手机银行&#x27;, &#x27;created_time&#x27;: 1570518773, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c3e9826816f7971ec9fec&#x27;, &#x27;name&#x27;: &#x27;rqhtest&#x27;, &#x27;created_time&#x27;: 1570520728, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c4c2026816f7971ec9ff0&#x27;, &#x27;name&#x27;: &#x27;rqhtest01&#x27;, &#x27;created_time&#x27;: 1570524192, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c4d4026816f7971ec9ff2&#x27;, &#x27;name&#x27;: &#x27;rqhtest001&#x27;, &#x27;created_time&#x27;: 1570524480, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c4e3f26816f7971ec9ff4&#x27;, &#x27;name&#x27;: &#x27;test001&#x27;, &#x27;created_time&#x27;: 1570524735, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;5d9c4ec926816f7971ec9ff6&#x27;, &#x27;name&#x27;: &#x27;rqhtest002&#x27;, &#x27;created_time&#x27;: 1570524873, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}, {&#x27;service_id&#x27;: &#x27;demozl&#x27;, &#x27;name&#x27;: &#x27;rqhtest003&#x27;, &#x27;created_time&#x27;: 1570524971, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_02_postapiservice</td>
+          <td>创建业务系统[post] api/service</td>
+          <td class="col-time">2019-10-14 02:21:20.501224</td>
+          <td class="col-duration">10.95</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service
+【请求参数】：
+{&#x27;name&#x27;: &#x27;rqhtest005&#x27;}
+【返回结果】：
+{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da3db9926816f7971eca1cc&#x27;, &#x27;name&#x27;: &#x27;rqhtest005&#x27;, &#x27;created_time&#x27;: 1571019673, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_03_getservice_id</td>
+          <td>(验证创建业务是否成功)获获取业务系统信息[get] /api/service/:service_id</td>
+          <td class="col-time">2019-10-14 02:21:24.803230</td>
+          <td class="col-duration">4.30</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service/5da3db9926816f7971eca1cc
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da3db9926816f7971eca1cc&#x27;, &#x27;name&#x27;: &#x27;rqhtest005&#x27;, &#x27;created_time&#x27;: 1571019673, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_04_modifyservice_id</td>
+          <td>修改业务系统配置[post] /api/service/:service_id</td>
+          <td class="col-time">2019-10-14 02:21:30.030719</td>
+          <td class="col-duration">5.23</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service/5da3db9926816f7971eca1cc
+【请求参数】：
+{&#x27;name&#x27;: &#x27;test002&#x27;, &#x27;monitored_kpi&#x27;: [&#x27;kpi.mobilebanks.trans_volume&#x27;, &#x27;kpi.mobilebanks.resp_time&#x27;], &#x27;modules&#x27;: [&#x27;5b078c2f4c7d9c44c44f79f8&#x27;], &#x27;alert_rules&#x27;: [{&#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;duration&#x27;: 300, &#x27;kpi_min_thr&#x27;: 2, &#x27;frequency&#x27;: 10}], &#x27;receiver&#x27;: {&#x27;email&#x27;: [&#x27;zjinn@bizseer.com&#x27;]}}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da3db9926816f7971eca1cc&#x27;, &#x27;name&#x27;: &#x27;test002&#x27;, &#x27;created_time&#x27;: 1571019673, &#x27;monitored_kpi&#x27;: [&#x27;kpi.mobilebanks.trans_volume&#x27;, &#x27;kpi.mobilebanks.resp_time&#x27;], &#x27;modules&#x27;: [&#x27;5b078c2f4c7d9c44c44f79f8&#x27;], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 300, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 2, &#x27;frequency&#x27;: 10}], &#x27;receiver&#x27;: {&#x27;email&#x27;: [&#x27;zjinn@bizseer.com&#x27;]}}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_04_getservice_id</td>
+          <td>(验证修改是否成功)获获取业务系统信息[get] /api/service/:service_id</td>
+          <td class="col-time">2019-10-14 02:21:30.123376</td>
+          <td class="col-duration">0.09</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service/5da3db9926816f7971eca1cc
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da3db9926816f7971eca1cc&#x27;, &#x27;name&#x27;: &#x27;test002&#x27;, &#x27;created_time&#x27;: 1571019673, &#x27;monitored_kpi&#x27;: [&#x27;kpi.mobilebanks.trans_volume&#x27;, &#x27;kpi.mobilebanks.resp_time&#x27;], &#x27;modules&#x27;: [&#x27;5b078c2f4c7d9c44c44f79f8&#x27;], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 300, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 2, &#x27;frequency&#x27;: 10}], &#x27;receiver&#x27;: {&#x27;email&#x27;: [&#x27;zjinn@bizseer.com&#x27;]}}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_05_deleteservice_id</td>
+          <td>删除业务系统[delete] /api/service/:service_id</td>
+          <td class="col-time">2019-10-14 02:21:33.379300</td>
+          <td class="col-duration">3.25</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service/5da3db9926816f7971eca1cc
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_01_BusinessSystemObjectOperatingInterface.py::TestAPIService::test_05_getservice_id</td>
+          <td>(验证删除是否成功)获获取业务系统信息[get] /api/service/:service_id</td>
+          <td class="col-time">2019-10-14 02:21:47.297098</td>
+          <td class="col-duration">13.92</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/service/5da3db9926816f7971eca1cc
+【返回结果】：
+{&#x27;code&#x27;: 400, &#x27;msg&#x27;: &#x27;Index: 0, Size: 0&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_01_getapinode</td>
+          <td>获取机器节点列表[get] /api/node</td>
+          <td class="col-time">2019-10-14 02:21:48.251360</td>
+          <td class="col-duration">0.95</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;node_key&#x27;: &#x27;node.BCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;created_time&#x27;: 1569410679, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;created_time&#x27;: 1569413328, &#x27;modules&#x27;: []}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_02_putapinode</td>
+          <td>创建机器节点[put] /api/node/:node_key</td>
+          <td class="col-time">2019-10-14 02:21:56.957923</td>
+          <td class="col-duration">8.70</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001
+【返回结果】：
+{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;node_key&#x27;: &#x27;node.bztest001&#x27;, &#x27;name&#x27;: &#x27;node.bztest001&#x27;, &#x27;created_time&#x27;: 1571019714, &#x27;modules&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_02_getapinode</td>
+          <td>(验证创建机器节点是否成功)获取机器节点列表[get] /api/node</td>
+          <td class="col-time">2019-10-14 02:21:56.979884</td>
+          <td class="col-duration">0.02</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;node_key&#x27;: &#x27;node.BCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;created_time&#x27;: 1569410679, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;created_time&#x27;: 1569413328, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.bztest001&#x27;, &#x27;name&#x27;: &#x27;node.bztest001&#x27;, &#x27;created_time&#x27;: 1571019714, &#x27;modules&#x27;: []}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_03_modifyapinode</td>
+          <td>机器节点重命名[post] /api/node/:node_key/name</td>
+          <td class="col-time">2019-10-14 02:21:57.471270</td>
+          <td class="col-duration">0.49</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001/name
+【请求参数】：
+{&#x27;name&#x27;: &#x27;node.bztest002&#x27;}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;node_key&#x27;: &#x27;node.bztest001&#x27;, &#x27;name&#x27;: &#x27;node.bztest002&#x27;, &#x27;created_time&#x27;: 1571019714}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_03_getapinode</td>
+          <td>(验证重命名机器节点是否成功)获取机器节点列表[get] /api/node</td>
+          <td class="col-time">2019-10-14 02:21:57.648274</td>
+          <td class="col-duration">0.17</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;node_key&#x27;: &#x27;node.BCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;created_time&#x27;: 1569410679, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;created_time&#x27;: 1569413328, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.bztest001&#x27;, &#x27;name&#x27;: &#x27;node.bztest002&#x27;, &#x27;created_time&#x27;: 1571019714, &#x27;modules&#x27;: []}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_04_getapinodedata</td>
+          <td>获取机器节点多维数据[get] /api/node/:node_key/data</td>
+          <td class="col-time">2019-10-14 02:22:02.598163</td>
+          <td class="col-duration">4.95</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001/data?time=1571019717
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;values&#x27;: [], &#x27;header&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_05_postapinodedata</td>
+          <td>提交机器节点多维数据[post] /api/node/:node_key/data</td>
+          <td class="col-time">2019-10-14 02:22:09.594185</td>
+          <td class="col-duration">6.99</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001/data?time=1571019722
+【请求参数】：
+{&#x27;header&#x27;: [&#x27;time&#x27;, &#x27;CPU_Usage&#x27;, &#x27;Mem_Usage&#x27;, &#x27;Idle_Process&#x27;], &#x27;values&#x27;: [[1571019722, 34, 10000000, 12], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10], [1571019722, 40, 11000000, 10]], &#x27;auto_create&#x27;: True}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_06_getapinodedata</td>
+          <td>获取机器节点多维数据表头[get] /api/node/:node_key/data/metric</td>
+          <td class="col-time">2019-10-14 02:22:12.931379</td>
+          <td class="col-duration">3.34</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001/data/metric
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [&#x27;CPU_Usage&#x27;, &#x27;Idle_Process&#x27;, &#x27;Mem_Usage&#x27;]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_08_postapinodedata</td>
+          <td>批批量提交机器节点多维数据[post] /api/node/data</td>
+          <td class="col-time">2019-10-14 02:22:14.469037</td>
+          <td class="col-duration">1.54</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/data
+【请求参数】：
+{&#x27;auto_create&#x27;: True, &#x27;data&#x27;: [{&#x27;node_key&#x27;: &#x27;node.bztest001&#x27;, &#x27;header&#x27;: [&#x27;time&#x27;, &#x27;CPU_Usage&#x27;, &#x27;Mem_Usage&#x27;, &#x27;Idle_Process&#x27;], &#x27;values&#x27;: [[1571019732, 34, 10000000, 12], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10], [1571019732, 40, 11000000, 10]]}]}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_09_getapinodedata</td>
+          <td>批量获取机器节点多维数据表头[get] /api/node/data/metric</td>
+          <td class="col-time">2019-10-14 02:22:18.573501</td>
+          <td class="col-duration">4.10</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/data/metric
+【请求参数】：
+{&#x27;nodes&#x27;: [&#x27;node.bztest001&#x27;]}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [&#x27;CPU_Usage&#x27;, &#x27;Mem_Usage&#x27;, &#x27;Idle_Process&#x27;]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_10_deleteapinode</td>
+          <td>删除机器节点[delete] /api/node/:node_key</td>
+          <td class="col-time">2019-10-14 02:22:20.191885</td>
+          <td class="col-duration">1.62</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node/node.bztest001
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_02_MachineOperationDataInterface.py::TestMachineNode::test_11_getapinode</td>
+          <td>(验证删除机器节点是否成功)获取机器节点列表[get] /api/node</td>
+          <td class="col-time">2019-10-14 02:22:20.357123</td>
+          <td class="col-duration">0.16</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/node
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;node_key&#x27;: &#x27;node.BCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP10&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-10-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP01&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-01-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP02&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-02-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP03&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BDEPAP04&#x27;, &#x27;name&#x27;: &#x27;加密-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP09&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-09-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP07&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-07-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP08&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-08-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP05&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-05-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP06&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-06-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP03&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-03-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP01&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-01-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.BCBSAP04&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-04-备&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PCBSAP02&#x27;, &#x27;name&#x27;: &#x27;核心-应用服务器-02-主&#x27;, &#x27;created_time&#x27;: 1535097845, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP02&#x27;, &#x27;created_time&#x27;: 1569410679, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP04&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP03&#x27;, &#x27;created_time&#x27;: 1569413327, &#x27;modules&#x27;: []}, {&#x27;node_key&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;name&#x27;: &#x27;node.PECPAP01&#x27;, &#x27;created_time&#x27;: 1569413328, &#x27;modules&#x27;: []}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_01_getmodule</td>
+          <td>获获取模块列表[get] /api/module</td>
+          <td class="col-time">2019-10-14 02:22:21.126119</td>
+          <td class="col-duration">0.77</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;module_id&#x27;: &#x27;5d9d871026816f7971eca071&#x27;, &#x27;name&#x27;: &#x27;rqhtest006&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1570604816, &#x27;services&#x27;: [&#x27;5b7fa6c60a8d175f3cba7d39&#x27;]}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_02_getmodule_id</td>
+          <td>获取指定模块[get] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:22.565392</td>
+          <td class="col-duration">1.44</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5d9d871026816f7971eca071
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;module_id&#x27;: &#x27;5d9d871026816f7971eca071&#x27;, &#x27;name&#x27;: &#x27;rqhtest006&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1570604816, &#x27;services&#x27;: [&#x27;5b7fa6c60a8d175f3cba7d39&#x27;]}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_03_postapimodule</td>
+          <td>创建模块[post] /api/module</td>
+          <td class="col-time">2019-10-14 02:22:23.280132</td>
+          <td class="col-duration">0.71</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module
+【请求参数】：
+{&#x27;name&#x27;: &#x27;rqhtest007&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;]}
+【返回结果】：
+{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;module_id&#x27;: &#x27;5da3dbdf26816f7971eca1cf&#x27;, &#x27;name&#x27;: &#x27;rqhtest007&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1571019743, &#x27;services&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_03_getmodule_id</td>
+          <td>(验证创建模块是否成功)获取指定模块[get] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:24.402586</td>
+          <td class="col-duration">1.12</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5da3dbdf26816f7971eca1cf
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;module_id&#x27;: &#x27;5da3dbdf26816f7971eca1cf&#x27;, &#x27;name&#x27;: &#x27;rqhtest007&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1571019743, &#x27;services&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_04_modifymodule_id</td>
+          <td>修改模块内容[post] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:24.912190</td>
+          <td class="col-duration">0.51</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5da3dbdf26816f7971eca1cf
+【请求参数】：
+{&#x27;name&#x27;: &#x27;rqhtestDB02&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;]}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;module_id&#x27;: &#x27;5da3dbdf26816f7971eca1cf&#x27;, &#x27;name&#x27;: &#x27;rqhtestDB02&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1571019743, &#x27;services&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_04_getmodule_id</td>
+          <td>(验证修改模块内容是否成功)获取指定模块[get] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:25.632693</td>
+          <td class="col-duration">0.72</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5da3dbdf26816f7971eca1cf
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;module_id&#x27;: &#x27;5da3dbdf26816f7971eca1cf&#x27;, &#x27;name&#x27;: &#x27;rqhtestDB02&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;], &#x27;created_time&#x27;: 1571019743, &#x27;services&#x27;: []}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_05_deletemodule_id</td>
+          <td>删除模块[delete] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:26.052414</td>
+          <td class="col-duration">0.42</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5da3dbdf26816f7971eca1cf
+【请求参数】：
+{&#x27;name&#x27;: &#x27;rqhtest007&#x27;, &#x27;nodes&#x27;: [&#x27;node.MOBSDB01&#x27;, &#x27;node.MOBSDB02&#x27;]}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_03_ModularInterface.py::TestModularInterface::test_06_getmodule_id</td>
+          <td>(验证删除模块是否成功)获取指定模块[get] /api/module/:module_id</td>
+          <td class="col-time">2019-10-14 02:22:26.075509</td>
+          <td class="col-duration">0.02</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/module/5da3dbdf26816f7971eca1cf
+【返回结果】：
+{&#x27;code&#x27;: 404, &#x27;msg&#x27;: &#x27;Not Found&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_01_getapievent</td>
+          <td>获取事件列表[get] /api/event</td>
+          <td class="col-time">2019-10-14 02:22:26.270294</td>
+          <td class="col-duration">0.19</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;event_id&#x27;: &#x27;5b7fdbd70a8d176392badac2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1523846940, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,310、最小值 13,883）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 395.0737435949688, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 18.227403073764822], [&#x27;DISKWRITE&#x27;, 14.307870747642966], [&#x27;NET-WRITE&#x27;, 13.30621595900804], [&#x27;NET-READ&#x27;, 12.936242040267]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107302}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1523846940}, {&#x27;event_id&#x27;: &#x27;5b7fd7680a8d176392bad9fa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524250200, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 563.6576802720867, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 20.06811206217713], [&#x27;MEM&#x27;, 19.291204333175152], [&#x27;NET-WRITE&#x27;, 10.318277263281527], [&#x27;CPU&#x27;, 8.198570894948176], [&#x27;DISKWRITE&#x27;, 7.552829763373104]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 281.32319328814555, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.158483810242966], [&#x27;NET-WRITE&#x27;, 11.63343313587082], [&#x27;NET-READ&#x27;, 7.932667996102576], [&#x27;DISKWRITE&#x27;, 5.539985897152125], [&#x27;CPU&#x27;, 4.68021326576838]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107167}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524250200}, {&#x27;event_id&#x27;: &#x27;5b7fdc4d0a8d176392badad3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524641760, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 17,219、最小值 10,896）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 798.9703632518997, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 21.573883366255988], [&#x27;CPU&#x27;, 21.127330831560926], [&#x27;NET-READ&#x27;, 18.925058157390218], [&#x27;DISKWRITE&#x27;, 17.54309036090975]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107319}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524641760}, {&#x27;event_id&#x27;: &#x27;5b7fdcd90a8d176392badade&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1525764660, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,204、最小值 16,325）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 1461.5888762561735, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 27.74201026927587], [&#x27;DISKWRITE&#x27;, 25.255912582584436], [&#x27;NET-WRITE&#x27;, 23.70607006859659], [&#x27;NET-READ&#x27;, 22.907862524828097]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107342}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1525764660}, {&#x27;event_id&#x27;: &#x27;5b7fdd990a8d176392badae9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526349240, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 19,298、最小值 17,929）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 422.7970493924975, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-READ&#x27;, 16.233508910540767], [&#x27;NET-WRITE&#x27;, 16.13669844847439], [&#x27;DISKWRITE&#x27;, 15.495697431217001], [&#x27;CPU&#x27;, 12.95081205213134]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107358}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526349240}, {&#x27;event_id&#x27;: &#x27;5d6600a726816f3df0310bfe&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1526530391, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1526530391, &#x27;description&#x27;: &#x27;test&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5b7fddfc0a8d176392badaf2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526895780, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 14,789、最小值 8,226）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -13.243966958147368, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 4.942222480734902]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107378}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526895780}, {&#x27;event_id&#x27;: &#x27;5b7fd8df0a8d176392bada32&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527271020, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -18.498213241401793, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 4.764584748362967]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107195}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527271020}, {&#x27;event_id&#x27;: &#x27;5b7fd96b0a8d176392bada5f&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 107.28658586041436, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 24.35509244112], [&#x27;NET-WRITE&#x27;, 8.125531236604408]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 82.51748963120653, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 18.320528360951766], [&#x27;DISKREAD&#x27;, 5.475317844762244]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107223}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527358080}, {&#x27;event_id&#x27;: &#x27;5d3956e826816f6aa4855ecd&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1527358080, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 14, &#x27;nodes&#x27;: [&#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;test&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;MEM&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;NET-WRITE&#x27;, 1, [&#x27;node.BCBSAP10&#x27;], [1], 1]], &#x27;props&#x27;: 0.3333333333333333}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1569315192, &#x27;version&#x27;: &#x27;v0.3.2&#x27;, &#x27;node_severity&#x27;: 2}}, {&#x27;event_id&#x27;: &#x27;5b7fda070a8d176392bada93&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527879060, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 352.3529426062469, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.481819082792107], [&#x27;NET-WRITE&#x27;, 10.318775153029026], [&#x27;DISKREAD&#x27;, 8.37794295409653], [&#x27;CPU&#x27;, 8.070161195449378], [&#x27;DISKWRITE&#x27;, 5.916015697018958]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 192.35005580585613, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 22.30854876481681], [&#x27;NET-WRITE&#x27;, 9.733986993821791], [&#x27;NET-READ&#x27;, 5.864705454260079]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107272}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527879060}, {&#x27;event_id&#x27;: &#x27;5d3956c126816f6aa4855eca&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1564038525, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1564038525, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9d8ccd26816f7971eca08d&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570606285, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570607257, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9c3626816f7971eca09a&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610230, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610304, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9d2c26816f7971eca0a2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610476, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610547, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9e0526816f7971eca0aa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610693, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610701, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da74426816f7971eca0b7&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613060, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570613863, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8b826816f7971eca0ba&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613431, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615128, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8f926816f7971eca0bd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613497, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa0826816f7971eca0c0&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613768, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa6626816f7971eca0c3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613862, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9026816f7971eca0c6&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613904, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9b26816f7971eca0c9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613915, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9dab1526816f7971eca0cc&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614035, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dabe726816f7971eca0cf&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614203, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dad3226816f7971eca0d2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614577, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc0dc26816f7971eca0da&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619612, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619647, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc1b926816f7971eca0dd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619832, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619842, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9ff8ea26816f7971eca104&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570764572, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570764572, &#x27;description&#x27;: &#x27;test000&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570765069, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5da026f426816f7971eca10e&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570776508, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570776508, &#x27;description&#x27;: &#x27;测试&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5da140fc26816f7971eca181&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570848561, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570848561, &#x27;description&#x27;: &#x27;没有多维根因分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}]}
+5b7fb7280a8d17625076786e
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_02_postapievent</td>
+          <td>创建事件[post] /api/event</td>
+          <td class="col-time">2019-10-14 02:25:19.168231</td>
+          <td class="col-duration">172.90</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>5b7fb7280a8d17625076786e
+【请求URL】：
+http://192.168.115.130:8080/api/event
+【请求参数】：
+{&#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571019746, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;rqhtest业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;kpi_name&#x27;: &#x27;rqhtest手机银行交易量&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;analysis&#x27;: [&#x27;fluxrank&#x27;]}
+【返回结果】：
+{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;event_id&#x27;: &#x27;5da3dbe226816f7971eca1d1&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571019746, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;rqhtest业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;rqhtest手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_02_getapievent</td>
+          <td>获取事件列表[get] /api/event</td>
+          <td class="col-time">2019-10-14 02:25:19.227235</td>
+          <td class="col-duration">0.05</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;event_id&#x27;: &#x27;5b7fdbd70a8d176392badac2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1523846940, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,310、最小值 13,883）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 395.0737435949688, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 18.227403073764822], [&#x27;DISKWRITE&#x27;, 14.307870747642966], [&#x27;NET-WRITE&#x27;, 13.30621595900804], [&#x27;NET-READ&#x27;, 12.936242040267]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107302}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1523846940}, {&#x27;event_id&#x27;: &#x27;5b7fd7680a8d176392bad9fa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524250200, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 563.6576802720867, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 20.06811206217713], [&#x27;MEM&#x27;, 19.291204333175152], [&#x27;NET-WRITE&#x27;, 10.318277263281527], [&#x27;CPU&#x27;, 8.198570894948176], [&#x27;DISKWRITE&#x27;, 7.552829763373104]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 281.32319328814555, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.158483810242966], [&#x27;NET-WRITE&#x27;, 11.63343313587082], [&#x27;NET-READ&#x27;, 7.932667996102576], [&#x27;DISKWRITE&#x27;, 5.539985897152125], [&#x27;CPU&#x27;, 4.68021326576838]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107167}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524250200}, {&#x27;event_id&#x27;: &#x27;5b7fdc4d0a8d176392badad3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524641760, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 17,219、最小值 10,896）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 798.9703632518997, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 21.573883366255988], [&#x27;CPU&#x27;, 21.127330831560926], [&#x27;NET-READ&#x27;, 18.925058157390218], [&#x27;DISKWRITE&#x27;, 17.54309036090975]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107319}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524641760}, {&#x27;event_id&#x27;: &#x27;5b7fdcd90a8d176392badade&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1525764660, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,204、最小值 16,325）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 1461.5888762561735, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 27.74201026927587], [&#x27;DISKWRITE&#x27;, 25.255912582584436], [&#x27;NET-WRITE&#x27;, 23.70607006859659], [&#x27;NET-READ&#x27;, 22.907862524828097]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107342}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1525764660}, {&#x27;event_id&#x27;: &#x27;5b7fdd990a8d176392badae9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526349240, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 19,298、最小值 17,929）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 422.7970493924975, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-READ&#x27;, 16.233508910540767], [&#x27;NET-WRITE&#x27;, 16.13669844847439], [&#x27;DISKWRITE&#x27;, 15.495697431217001], [&#x27;CPU&#x27;, 12.95081205213134]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107358}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526349240}, {&#x27;event_id&#x27;: &#x27;5d6600a726816f3df0310bfe&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1526530391, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1526530391, &#x27;description&#x27;: &#x27;test&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5b7fddfc0a8d176392badaf2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526895780, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 14,789、最小值 8,226）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -13.243966958147368, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 4.942222480734902]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107378}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526895780}, {&#x27;event_id&#x27;: &#x27;5b7fd8df0a8d176392bada32&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527271020, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -18.498213241401793, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 4.764584748362967]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107195}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527271020}, {&#x27;event_id&#x27;: &#x27;5b7fd96b0a8d176392bada5f&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 107.28658586041436, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 24.35509244112], [&#x27;NET-WRITE&#x27;, 8.125531236604408]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 82.51748963120653, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 18.320528360951766], [&#x27;DISKREAD&#x27;, 5.475317844762244]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107223}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527358080}, {&#x27;event_id&#x27;: &#x27;5d3956e826816f6aa4855ecd&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1527358080, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 14, &#x27;nodes&#x27;: [&#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;test&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;MEM&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;NET-WRITE&#x27;, 1, [&#x27;node.BCBSAP10&#x27;], [1], 1]], &#x27;props&#x27;: 0.3333333333333333}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1569315192, &#x27;version&#x27;: &#x27;v0.3.2&#x27;, &#x27;node_severity&#x27;: 2}}, {&#x27;event_id&#x27;: &#x27;5b7fda070a8d176392bada93&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527879060, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 352.3529426062469, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.481819082792107], [&#x27;NET-WRITE&#x27;, 10.318775153029026], [&#x27;DISKREAD&#x27;, 8.37794295409653], [&#x27;CPU&#x27;, 8.070161195449378], [&#x27;DISKWRITE&#x27;, 5.916015697018958]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 192.35005580585613, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 22.30854876481681], [&#x27;NET-WRITE&#x27;, 9.733986993821791], [&#x27;NET-READ&#x27;, 5.864705454260079]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107272}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527879060}, {&#x27;event_id&#x27;: &#x27;5d3956c126816f6aa4855eca&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1564038525, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1564038525, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9d8ccd26816f7971eca08d&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570606285, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570607257, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9c3626816f7971eca09a&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610230, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610304, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9d2c26816f7971eca0a2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610476, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610547, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9e0526816f7971eca0aa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610693, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610701, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da74426816f7971eca0b7&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613060, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570613863, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8b826816f7971eca0ba&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613431, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615128, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8f926816f7971eca0bd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613497, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa0826816f7971eca0c0&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613768, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa6626816f7971eca0c3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613862, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9026816f7971eca0c6&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613904, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9b26816f7971eca0c9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613915, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9dab1526816f7971eca0cc&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614035, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dabe726816f7971eca0cf&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614203, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dad3226816f7971eca0d2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614577, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc0dc26816f7971eca0da&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619612, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619647, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc1b926816f7971eca0dd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619832, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619842, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9ff8ea26816f7971eca104&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570764572, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570764572, &#x27;description&#x27;: &#x27;test000&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570765069, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5da026f426816f7971eca10e&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570776508, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570776508, &#x27;description&#x27;: &#x27;测试&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5da140fc26816f7971eca181&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570848561, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570848561, &#x27;description&#x27;: &#x27;没有多维根因分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5da3dbe226816f7971eca1d1&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571019746, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;rqhtest业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;rqhtest手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_03_getapievent_id</td>
+          <td>获取事件对象[get] /api/event/:event_id</td>
+          <td class="col-time">2019-10-14 02:25:19.793408</td>
+          <td class="col-duration">0.56</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event/5da3dbe226816f7971eca1d1
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;event_id&#x27;: &#x27;5da3dbe226816f7971eca1d1&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571019746, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;rqhtest业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;rqhtest手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_05_deleteapievent_id</td>
+          <td>删除事件[delete] /api/event/:event_id</td>
+          <td class="col-time">2019-10-14 02:25:22.909145</td>
+          <td class="col-duration">1.21</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event/5da3dbe226816f7971eca1d1
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_06_getapievent</td>
+          <td>获取事件列表[get] /api/event</td>
+          <td class="col-time">2019-10-14 02:25:23.251687</td>
+          <td class="col-duration">0.34</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;event_id&#x27;: &#x27;5b7fdbd70a8d176392badac2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1523846940, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,310、最小值 13,883）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 395.0737435949688, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 18.227403073764822], [&#x27;DISKWRITE&#x27;, 14.307870747642966], [&#x27;NET-WRITE&#x27;, 13.30621595900804], [&#x27;NET-READ&#x27;, 12.936242040267]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107302}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1523846940}, {&#x27;event_id&#x27;: &#x27;5b7fd7680a8d176392bad9fa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524250200, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:50 至 3:12 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 563.6576802720867, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 20.06811206217713], [&#x27;MEM&#x27;, 19.291204333175152], [&#x27;NET-WRITE&#x27;, 10.318277263281527], [&#x27;CPU&#x27;, 8.198570894948176], [&#x27;DISKWRITE&#x27;, 7.552829763373104]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 281.32319328814555, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.158483810242966], [&#x27;NET-WRITE&#x27;, 11.63343313587082], [&#x27;NET-READ&#x27;, 7.932667996102576], [&#x27;DISKWRITE&#x27;, 5.539985897152125], [&#x27;CPU&#x27;, 4.68021326576838]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107167}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524250200}, {&#x27;event_id&#x27;: &#x27;5b7fdc4d0a8d176392badad3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1524641760, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 17,219、最小值 10,896）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 798.9703632518997, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 21.573883366255988], [&#x27;CPU&#x27;, 21.127330831560926], [&#x27;NET-READ&#x27;, 18.925058157390218], [&#x27;DISKWRITE&#x27;, 17.54309036090975]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107319}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1524641760}, {&#x27;event_id&#x27;: &#x27;5b7fdcd90a8d176392badade&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1525764660, &#x27;description&#x27;: &#x27;KPI 出现大面积异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 18,204、最小值 16,325）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 1461.5888762561735, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 27.74201026927587], [&#x27;DISKWRITE&#x27;, 25.255912582584436], [&#x27;NET-WRITE&#x27;, 23.70607006859659], [&#x27;NET-READ&#x27;, 22.907862524828097]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107342}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1525764660}, {&#x27;event_id&#x27;: &#x27;5b7fdd990a8d176392badae9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526349240, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 19,298、最小值 17,929）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 422.7970493924975, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-READ&#x27;, 16.233508910540767], [&#x27;NET-WRITE&#x27;, 16.13669844847439], [&#x27;DISKWRITE&#x27;, 15.495697431217001], [&#x27;CPU&#x27;, 12.95081205213134]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107358}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526349240}, {&#x27;event_id&#x27;: &#x27;5d6600a726816f3df0310bfe&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1526530391, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1526530391, &#x27;description&#x27;: &#x27;test&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5b7fddfc0a8d176392badaf2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1526895780, &#x27;description&#x27;: &#x27;KPI 出现小面积极端值异常&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;加密平台-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.dep.trans&#x27;, &#x27;description&#x27;: &#x27;数值异常升高（最大值 14,789、最小值 8,226）&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -13.243966958147368, &#x27;nodes&#x27;: [&#x27;node.PDEPAP01&#x27;, &#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;], &#x27;module&#x27;: &#x27;加密-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;CPU&#x27;, 4.942222480734902]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 0.5, &#x27;time&#x27;: 1535107378}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1526895780}, {&#x27;event_id&#x27;: &#x27;5b7fd8df0a8d176392bada32&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527271020, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;1:57 至 2:10 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: -18.498213241401793, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;NET-WRITE&#x27;, 4.764584748362967]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107195}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527271020}, {&#x27;event_id&#x27;: &#x27;5b7fd96b0a8d176392bada5f&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:08 至 2:14 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 107.28658586041436, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 24.35509244112], [&#x27;NET-WRITE&#x27;, 8.125531236604408]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 82.51748963120653, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 18.320528360951766], [&#x27;DISKREAD&#x27;, 5.475317844762244]], &#x27;props&#x27;: 0.9}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107223}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527358080}, {&#x27;event_id&#x27;: &#x27;5d3956e826816f6aa4855ecd&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1527358080, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1527358080, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 14, &#x27;nodes&#x27;: [&#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;test&#x27;, &#x27;metrics&#x27;: [[&#x27;DISKREAD&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;MEM&#x27;, 3, [&#x27;node.BCBSAP10&#x27;], [3], 1], [&#x27;NET-WRITE&#x27;, 1, [&#x27;node.BCBSAP10&#x27;], [1], 1]], &#x27;props&#x27;: 0.3333333333333333}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1569315192, &#x27;version&#x27;: &#x27;v0.3.2&#x27;, &#x27;node_severity&#x27;: 2}}, {&#x27;event_id&#x27;: &#x27;5b7fda070a8d176392bada93&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;alert&#x27;, &#x27;time&#x27;: 1527879060, &#x27;description&#x27;: &#x27;数据出现长时间缺失&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;核心业务-响应时间&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}, {&#x27;kpi_name&#x27;: &#x27;核心业务-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.trans&#x27;, &#x27;description&#x27;: &#x27;2:51 至 3:01 有大段数据缺失&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [{&#x27;score&#x27;: 352.3529426062469, &#x27;nodes&#x27;: [&#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP06&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-备&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 21.481819082792107], [&#x27;NET-WRITE&#x27;, 10.318775153029026], [&#x27;DISKREAD&#x27;, 8.37794295409653], [&#x27;CPU&#x27;, 8.070161195449378], [&#x27;DISKWRITE&#x27;, 5.916015697018958]], &#x27;props&#x27;: 1.0}, {&#x27;score&#x27;: 192.35005580585613, &#x27;nodes&#x27;: [&#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP07&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP10&#x27;], &#x27;module&#x27;: &#x27;核心-应用服务器-主&#x27;, &#x27;metrics&#x27;: [[&#x27;MEM&#x27;, 22.30854876481681], [&#x27;NET-WRITE&#x27;, 9.733986993821791], [&#x27;NET-READ&#x27;, 5.864705454260079]], &#x27;props&#x27;: 1.0}], &#x27;data_integrity&#x27;: 1.0, &#x27;time&#x27;: 1535107272}, &#x27;finish&#x27;: True, &#x27;update_time&#x27;: 1527879060}, {&#x27;event_id&#x27;: &#x27;5d3956c126816f6aa4855eca&#x27;, &#x27;service_id&#x27;: &#x27;5d3955e526816f6aa4855ec6&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1564038525, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1564038525, &#x27;description&#x27;: &#x27;&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9d8ccd26816f7971eca08d&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570606285, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570607257, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9c3626816f7971eca09a&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610230, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610304, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9d2c26816f7971eca0a2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610476, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610547, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9d9e0526816f7971eca0aa&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570610693, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570610701, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da74426816f7971eca0b7&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613060, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570613863, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8b826816f7971eca0ba&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613431, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615128, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9da8f926816f7971eca0bd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613497, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa0826816f7971eca0c0&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613768, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa6626816f7971eca0c3&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613862, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9026816f7971eca0c6&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613904, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9daa9b26816f7971eca0c9&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570613915, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5d9dab1526816f7971eca0cc&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614035, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dabe726816f7971eca0cf&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614203, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dad3226816f7971eca0d2&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570614577, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570615172, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc0dc26816f7971eca0da&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619612, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619647, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9dc1b926816f7971eca0dd&#x27;, &#x27;service_id&#x27;: &#x27;5b7fb7280a8d17625076786e&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570619832, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1536822741, &#x27;description&#x27;: &#x27;业务更新定时分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;description&#x27;: &#x27;300秒内出现12个异常点&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570619842, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5d9ff8ea26816f7971eca104&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570764572, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570764572, &#x27;description&#x27;: &#x27;test000&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}], &#x27;fluxrank&#x27;: {&#x27;data&#x27;: [], &#x27;data_integrity&#x27;: 0.0, &#x27;time&#x27;: 1570765069, &#x27;version&#x27;: &#x27;v0.3.1&#x27;, &#x27;node_severity&#x27;: 5}}, {&#x27;event_id&#x27;: &#x27;5da026f426816f7971eca10e&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570776508, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570776508, &#x27;description&#x27;: &#x27;测试&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}, {&#x27;event_id&#x27;: &#x27;5da140fc26816f7971eca181&#x27;, &#x27;service_id&#x27;: &#x27;5b7fa6c60a8d175f3cba7d39&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1570848561, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1570848561, &#x27;description&#x27;: &#x27;没有多维根因分析&#x27;, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_name&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard3.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.a&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard2.b&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.dashboard1.c&#x27;, &#x27;description&#x27;: &#x27;&#x27;}, {&#x27;kpi_name&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.fluxrank.cbs.duration&#x27;, &#x27;description&#x27;: &#x27;&#x27;}]}]}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_04_EventObjectOperatingInterface.py::TestEventInterface::test_06_putapievent_id</td>
+          <td>提交事件多维根因分析结果[put] /api/event/:event_id/fluxrank</td>
+          <td class="col-time">2019-10-14 02:25:23.327801</td>
+          <td class="col-duration">0.07</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.130:8080/api/event/5da3dbe226816f7971eca1d1/fluxrank
+【请求参数】：
+{&#x27;description&#x27;: &#x27;交易量出现异常&#x27;, &#x27;update_time&#x27;: 1571019923, &#x27;finish&#x27;: False, &#x27;anomaly_kpi&#x27;: [{&#x27;kpi_key&#x27;: &#x27;kpi.mobilebank.trans_volume&#x27;, &#x27;kpi_name&#x27;: &#x27;手机银行交易量&#x27;, &#x27;description&#x27;: &#x27;500秒内出现20个异常点&#x27;}]}
+【返回结果】：
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+<br/></div></td></tr></tbody></table></body></html>
