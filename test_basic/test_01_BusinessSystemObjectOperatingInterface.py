@@ -85,7 +85,7 @@ class TestAPIService(object):
         assert jobs["data"]["alert_rules"][0]["frequency"] == 10
         assert jobs["data"]["receiver"]["email"][0] == "zjinn@bizseer.com"
 
-    def test_04_getservice_id(self):
+    def test_05_getservice_id(self):
         '''(验证修改是否成功)获获取业务系统信息[get] /api/service/:service_id'''
         url = config.base_url + "/api/service/" + config.service_id
         headers = {'Content-Type': 'application/json'}
@@ -105,7 +105,7 @@ class TestAPIService(object):
         assert jobs["data"]["alert_rules"][0]["frequency"] == 10
         assert jobs["data"]["receiver"]["email"][0] == "zjinn@bizseer.com"
 
-    def test_05_deleteservice_id(self):
+    def test_06_deleteservice_id(self):
         '''删除业务系统[delete] /api/service/:service_id'''
         url = config.base_url + "/api/service/" + config.service_id
         headers = {'Content-Type': 'application/json'}
@@ -116,7 +116,7 @@ class TestAPIService(object):
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
 
-    def test_05_getservice_id(self):
+    def test_07_getservice_id(self):
         '''(验证删除是否成功)获获取业务系统信息[get] /api/service/:service_id'''
         url = config.base_url + "/api/service/" + config.service_id
         headers = {'Content-Type': 'application/json'}

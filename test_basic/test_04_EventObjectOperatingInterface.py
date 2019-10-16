@@ -34,7 +34,7 @@ class TestEventInterface(object):
         # print(config.service_id)
         data = {
             "service_id": config.service_id,
-            "type": "custom",
+            "type": "alert",
             "time": int(time.time()),
             "finish": False,
             "update_time": int(time.time()),
@@ -55,7 +55,7 @@ class TestEventInterface(object):
         assert jobs["msg"] == "Created"
         assert len(jobs["data"]) != 0
         assert jobs["data"]["service_id"] == config.service_id
-        assert jobs["data"]["type"] == "custom"
+        assert jobs["data"]["type"] == "alert"
         assert jobs["data"]["description"] == "rqhtest业务更新定时分析"
         assert jobs["data"]["anomaly_kpi"][0]["kpi_key"] == "kpi.mobilebank.trans_volume"
         assert jobs["data"]["anomaly_kpi"][0]["kpi_name"] == "rqhtest手机银行交易量"
