@@ -93,6 +93,6 @@ class TestNewBusiness(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) == 0
 
-    def test_07_getevent(self):
-        '''在告警列表中 查询告警事件 -检查删除是否成功 - 删除业务'''
+    def test_07_deleteservice(self):
+        '''删除新建的业务'''
         test_01_BM_new_business.TestNewBusiness.test_07_deleteservice(self)
