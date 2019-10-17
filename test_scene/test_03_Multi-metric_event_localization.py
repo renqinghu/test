@@ -13,7 +13,7 @@ class TestMultiEvent(object):
     modigynode_key = "node.bztest002"
     name = "rqh_test"
 
-    def test_01_postnodedata(self):
+    def test_01_postnodedata(self) ->object:
         '''模块-获取node data [post] /api/node/data/get?&time=1524685980,1524696780&multi=false'''
         url = config.base_url + "/api/node/data/get?&time=1524685980,1524696780&multi=false"
         headers = {'Content-Type': 'application/json'}
@@ -30,7 +30,7 @@ class TestMultiEvent(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
 
-    def test_02_postnodedata(self):
+    def test_02_postnodedata(self)->object:
         '''类型-获取node data [post] /api/node/data/get?&time=1524685980,1524696780&multi=false'''
         url = config.base_url + "/api/node/data/get?&time=1524685980,1524696780&multi=false"
         headers = {'Content-Type': 'application/json'}
@@ -44,7 +44,7 @@ class TestMultiEvent(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
 
-    def test_03_postnodedata(self):
+    def test_03_postnodedata(self)->object:
         '''机器-获取node data [post] /api/node/data/get?&time=1524685980,1524696780&multi=false'''
         url = config.base_url + "/api/node/data/get?&time=1524685980,1524696780&multi=false"
         headers = {'Content-Type': 'application/json'}
@@ -56,7 +56,7 @@ class TestMultiEvent(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
 
-    def test_04_postnodedata(self):
+    def test_04_postnodedata(self)->object:
         '''实例-获取node data [post] /api/node/data/get?&time=1524685980,1524696780&multi=false'''
         url = config.base_url + "/api/node/data/get?&time=1524685980,1524696780&multi=false"
         headers = {'Content-Type': 'application/json'}
@@ -78,4 +78,52 @@ class TestMultiEvent(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 202
         assert jobs["msg"] == "Accepted"
+        assert len(jobs["data"]) != 0
+
+    def test_06_getmodule(self):
+        '''模块机器指标查询-module [get] /api/module/5da6af651a870b4165bb7b94/nodes'''
+        url = config.base_url + "/api/module/5da6af651a870b4165bb7b94/nodes"
+        headers = {'Content-Type': 'application/json'}
+        # data = {"details": {"events": [{"event_id": "5da6b5421a870b4165bb7bcc", "time": 1524689580}]}}
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_07_getclass(self):
+        '''模块机器指标查询-class [post] /api/node/data/metric/class'''
+        url = config.base_url + "/api/node/data/metric/class"
+        headers = {'Content-Type': 'application/json'}
+        data = {"nodes": ["node.BDEPAP01"]}
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_08_getinstance(self):
+        '''模块机器指标查询-instance [post] /api/node/data/metric/class/instance'''
+        url = config.base_url + "/api/node/data/metric/class/instance"
+        headers = {'Content-Type': 'application/json'}
+        data = {"nodes": ["node.BDEPAP01"], "classNames": ["MEM"]}
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_09_getinstancecolumn(self):
+        '''模块机器指标查询-column [post] /api/node/data/metric/class/instance/column'''
+        url = config.base_url + "/api/node/data/metric/class/instance/column"
+        headers = {'Content-Type': 'application/json'}
+        data = {"nodes": ["node.BDEPAP01"], "classNames": ["MEM"], "instances": ["InstanceBDEPAP01"]}
+        r = requests.post(url, data=json.dumps(data), headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0

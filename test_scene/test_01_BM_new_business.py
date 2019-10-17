@@ -82,14 +82,14 @@ class TestNewBusiness(object):
         '''查询kpi name [post] /api/kpi/names'''
         url = config.base_url + "/api/kpi/names"
         headers = {'Content-Type': 'application/json'}
-        data = {"kpi_keys":[]}
-        r = requests.post(url, data=json.dumps(data),headers=headers)
+        data = {"kpi_keys": []}
+        r = requests.post(url, data=json.dumps(data), headers=headers)
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
 
-    def test_07_postkpiname(self):
+    def test_07_deleteservice(self) -> object:
         '''删除新建业务 [delete] /api/service/5da591489f62af470efa045e'''
         url = config.base_url + "/api/service/" + config.service_id
         headers = {'Content-Type': 'application/json'}
@@ -105,7 +105,7 @@ class TestNewBusiness(object):
         url = config.base_url + "/api/module/page?page=1&size=10"
         headers = {'Content-Type': 'application/json'}
         # data = {"kpi_keys":[]}
-        r = requests.get(url,headers=headers)
+        r = requests.get(url, headers=headers)
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
@@ -113,10 +113,10 @@ class TestNewBusiness(object):
 
     def test_09_getevent(self):
         '''查询event [get] /api/event?services=5bc9bd155210e6104d6bafad&duration=1571048005,1571134405'''
-        url = config.base_url + "/api/event?services="+config.service_id+"&duration=1571048005,1571134405"
+        url = config.base_url + "/api/event?services=" + config.service_id + "&duration=1571048005,1571134405"
         headers = {'Content-Type': 'application/json'}
         # data = {"kpi_keys":[]}
-        r = requests.get(url,headers=headers)
+        r = requests.get(url, headers=headers)
         jobs = r.json()
         config.pprint(url, jobs)
         assert jobs["code"] == 200
