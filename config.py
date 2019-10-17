@@ -2,7 +2,8 @@ import pytest
 
 # base_url = "http://192.168.115.130:8080"
 #民生测试
-base_url = "http://192.168.115.32:8080"
+#base_url = "http://192.168.115.32:8080"
+base_url = "http://192.168.115.41:8080"
 
 Authorization = ""
 Authorizationnew = ""

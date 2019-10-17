@@ -55,10 +55,7 @@ class TestMultiLevel(object):
         # 数据源 / 机器指标
         data = {"nodes": [
             "node.BCBSAP03",
-            "node.BCB"], "classNames": [
-            "net1",
-            "net2"
-        ], "instances": config.instances
+            "node.BCB"], "classNames": ['MEM', 'CPU', 'NET', 'DISK'], "instances": config.instances
         }
 
         r = requests.post(url, data=json.dumps(data), headers=headers)
