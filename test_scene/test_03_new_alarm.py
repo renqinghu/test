@@ -55,9 +55,9 @@ class TestNewBusiness(object):
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
-        assert jobs["data"][0]["event_id"] == config.event_id
-        assert jobs["data"][0]["service_id"] == config.service_id
-        assert jobs["data"][0]["description"] == self.eventdesc
+        assert jobs["data"]["events"][0]["event_id"] == config.event_id
+        assert jobs["data"]["events"][0]["service_id"] == config.service_id
+        assert jobs["data"]["events"][0]["description"] == self.eventdesc
         # assert jobs["data"][0]["service_name"] == test_01_BM_new_business.TestNewBusiness.name
 
     def test_04_getmodules(self):
@@ -91,7 +91,7 @@ class TestNewBusiness(object):
         config.pprint(url, jobs)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
-        assert len(jobs["data"]) == 0
+        assert len(jobs["data"]) == 2
 
     def test_07_deleteservice(self):
         '''删除新建的业务'''

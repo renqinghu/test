@@ -25,7 +25,7 @@ class TestEventInterface(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
 
-        config.service_id = jobs["data"][0]["service_id"]
+        config.service_id = jobs["data"]["events"][0]["service_id"]
 
     def test_02_postapievent(self):
         '''创建事件[post] /api/event'''
