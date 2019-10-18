@@ -404,7 +404,7 @@ function filter_table(elem) {
 }
 </script>
     <h1>report.html</h1>
-    <p>Report generated on 17-Oct-2019 at 17:54:13 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v2.0.0</p>
+    <p>Report generated on 18-Oct-2019 at 10:58:00 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v2.0.0</p>
     <h2>Environment</h2>
     <table id="environment">
       <tr>
@@ -427,8 +427,8 @@ function filter_table(elem) {
         <td><a href="http://192.168.115.41:8080" target="_blank">http://192.168.115.41:8080</a></td></tr></table>
     <h2>Summary</h2>
     <p>测试人: 任庆虎</p>
-    <p>7 tests ran in 0.27 seconds. </p>
-    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">7 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>, <input checked="true" class="filter" data-test-result="rerun" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="rerun">0 rerun</span>
+    <p>5 tests ran in 0.22 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">5 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>, <input checked="true" class="filter" data-test-result="rerun" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="rerun">0 rerun</span>
     <h2>Results</h2>
     <table id="results-table">
       <thead id="results-table-head">
@@ -443,103 +443,75 @@ function filter_table(elem) {
       <tbody class="passed results-table-row">
         <tr>
           <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_01_postservice</td>
-          <td>新建业务--新建告警事件</td>
-          <td class="col-time">2019-10-17 09:54:13.379750</td>
-          <td class="col-duration">0.06</td></tr>
+          <td class="col-name">test_scene/test_02_config.py::TestNewBusiness::test_01_postservice</td>
+          <td>创建kpi</td>
+          <td class="col-time">2019-10-18 02:58:00.762069</td>
+          <td class="col-duration">0.03</td></tr>
+        <tr>
+          <td class="extra" colspan="5">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
+http://192.168.115.41:8080/api/kpi/kpi.test-661
+【返回结果】：
+{&#x27;code&#x27;: 400, &#x27;msg&#x27;: &#x27;Kpi already existed&#x27;}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_scene/test_02_config.py::TestNewBusiness::test_02_getServiceModule</td>
+          <td>查询服务模块</td>
+          <td class="col-time">2019-10-18 02:58:00.804830</td>
+          <td class="col-duration">0.04</td></tr>
         <tr>
           <td class="extra" colspan="5">
             <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
 http://192.168.115.41:8080/api/service
 【返回结果】：
-{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da83a441a870bd4511400b2&#x27;, &#x27;name&#x27;: &#x27;rqh_test&#x27;, &#x27;created_time&#x27;: 1571306052, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}, &#x27;ips&#x27;: [], &#x27;success_codes&#x27;: []}}
-5da83a441a870bd4511400b2
+{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da92a381a870b1d64762459&#x27;, &#x27;name&#x27;: &#x27;rqh_test&#x27;, &#x27;created_time&#x27;: 1571367480, &#x27;monitored_kpi&#x27;: [], &#x27;modules&#x27;: [], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {}, &#x27;ips&#x27;: [], &#x27;success_codes&#x27;: []}}
+5da92a381a870b1d64762459
 【请求URL】：
-http://192.168.115.41:8080/api/event
-【返回结果】：
-{&#x27;code&#x27;: 201, &#x27;msg&#x27;: &#x27;Created&#x27;, &#x27;data&#x27;: {&#x27;event_id&#x27;: &#x27;5da83a441a870bd4511400b4&#x27;, &#x27;service_id&#x27;: &#x27;5da83a441a870bd4511400b2&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571306053, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1571306053, &#x27;description&#x27;: &#x27;测试新建告警事件&#x27;, &#x27;anomaly_kpi&#x27;: []}}
-<br/></div></td></tr></tbody>
-      <tbody class="passed results-table-row">
-        <tr>
-          <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_02_geteventid</td>
-          <td>查询告警事件</td>
-          <td class="col-time">2019-10-17 09:54:13.404557</td>
-          <td class="col-duration">0.02</td></tr>
-        <tr>
-          <td class="extra" colspan="5">
-            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/event/5da83a441a870bd4511400b4
-【返回结果】：
-{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;event_id&#x27;: &#x27;5da83a441a870bd4511400b4&#x27;, &#x27;service_id&#x27;: &#x27;5da83a441a870bd4511400b2&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571306053, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1571306053, &#x27;description&#x27;: &#x27;测试新建告警事件&#x27;, &#x27;anomaly_kpi&#x27;: []}}
-<br/></div></td></tr></tbody>
-      <tbody class="passed results-table-row">
-        <tr>
-          <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_03_getevent</td>
-          <td>在告警列表中 查询告警事件</td>
-          <td class="col-time">2019-10-17 09:54:13.433743</td>
-          <td class="col-duration">0.02</td></tr>
-        <tr>
-          <td class="extra" colspan="5">
-            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/event?services=5da83a441a870bd4511400b2&amp;duration=1570306053,1571306053
-【返回结果】：
-{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: [{&#x27;event_id&#x27;: &#x27;5da83a441a870bd4511400b4&#x27;, &#x27;service_id&#x27;: &#x27;5da83a441a870bd4511400b2&#x27;, &#x27;type&#x27;: &#x27;custom&#x27;, &#x27;time&#x27;: 1571306053, &#x27;finish&#x27;: False, &#x27;update_time&#x27;: 1571306053, &#x27;description&#x27;: &#x27;测试新建告警事件&#x27;, &#x27;anomaly_kpi&#x27;: [], &#x27;service_name&#x27;: &#x27;rqh_test&#x27;}]}
-<br/></div></td></tr></tbody>
-      <tbody class="passed results-table-row">
-        <tr>
-          <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_04_getmodules</td>
-          <td>在告警列表中 --查询告警事件 - 点击查看按钮</td>
-          <td class="col-time">2019-10-17 09:54:13.460501</td>
-          <td class="col-duration">0.02</td></tr>
-        <tr>
-          <td class="extra" colspan="5">
-            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/service/5da83a441a870bd4511400b2/modules
+http://192.168.115.41:8080/api/service/5da92a381a870b1d64762459/modules
 【返回结果】：
 {&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: []}
 <br/></div></td></tr></tbody>
       <tbody class="passed results-table-row">
         <tr>
           <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_05_deleteevent</td>
-          <td>在告警列表中 - 查询告警事件 - 点击删除按钮</td>
-          <td class="col-time">2019-10-17 09:54:13.482984</td>
+          <td class="col-name">test_scene/test_02_config.py::TestNewBusiness::test_03_getkpi</td>
+          <td>查询kpi 【get】/api/kpi/extremelySimplified?query=&amp;limit=100</td>
+          <td class="col-time">2019-10-18 02:58:00.830041</td>
           <td class="col-duration">0.02</td></tr>
         <tr>
           <td class="extra" colspan="5">
             <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/event/5da83a441a870bd4511400b4
+http://192.168.115.41:8080/api/kpi/extremelySimplified?query=&amp;limit=100
 【返回结果】：
-{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;count&#x27;: 1, &#x27;kpis&#x27;: [{&#x27;name&#x27;: &#x27;zyx-交易量&#x27;, &#x27;kpi_key&#x27;: &#x27;kpi.test-661&#x27;}]}}
 <br/></div></td></tr></tbody>
       <tbody class="passed results-table-row">
         <tr>
           <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_06_getevent</td>
-          <td>在告警列表中 查询告警事件 -检查删除是否成功</td>
-          <td class="col-time">2019-10-17 09:54:13.510554</td>
+          <td class="col-name">test_scene/test_02_config.py::TestNewBusiness::test_04_getModulePage</td>
+          <td>查询module 【get】/api/module/page?page=1&amp;size=100</td>
+          <td class="col-time">2019-10-18 02:58:00.855013</td>
           <td class="col-duration">0.02</td></tr>
         <tr>
           <td class="extra" colspan="5">
             <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/event?services=5da83a441a870bd4511400b2&amp;duration=1570306053,1571306053
+http://192.168.115.41:8080/api/module/page?page=1&amp;size=100
 【返回结果】：
-{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: []}
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;count&#x27;: 5, &#x27;modules&#x27;: [{&#x27;module_id&#x27;: &#x27;5da6af651a870b4165bb7b94&#x27;, &#x27;name&#x27;: &#x27;BDEPAP&#x27;, &#x27;nodes&#x27;: [&#x27;node.BDEPAP03&#x27;, &#x27;node.BDEPAP04&#x27;, &#x27;node.BDEPAP02&#x27;, &#x27;node.BDEPAP01&#x27;], &#x27;high_prior_metrics&#x27;: [], &#x27;low_prior_metrics&#x27;: [], &#x27;created_time&#x27;: 1571204965, &#x27;services&#x27;: [&#x27;5da6b0731a870b4165bb7b9e&#x27;]}, {&#x27;module_id&#x27;: &#x27;5da6af881a870b4165bb7b96&#x27;, &#x27;name&#x27;: &#x27;PDEPAP&#x27;, &#x27;nodes&#x27;: [&#x27;node.PDEPAP02&#x27;, &#x27;node.PDEPAP03&#x27;, &#x27;node.PDEPAP04&#x27;, &#x27;node.PDEPAP01&#x27;], &#x27;high_prior_metrics&#x27;: [&#x27;READ$&#x27;, &#x27;CPU&#x27;, &#x27;^MEM&#x27;], &#x27;low_prior_metrics&#x27;: [], &#x27;created_time&#x27;: 1571205000, &#x27;edit&#x27;: True, &#x27;expands&#x27;: [None, None, &#x27;&lt;span&gt;node.PDEPAP02&lt;/span&gt;&lt;span&gt;node.PDEPAP03&lt;/span&gt;&lt;span&gt;node.PDEPAP04&lt;/span&gt;&lt;span&gt;node.PDEPAP01&lt;/span&gt;&#x27;, &#x27;&lt;a class=&quot;oneline&quot; href=&quot;/#/service/5da6b0731a870b4165bb7b9e&quot;&gt;中原银行&lt;/a&gt;&#x27;], &#x27;node_count&#x27;: 4, &#x27;service_count&#x27;: 1, &#x27;services&#x27;: []}, {&#x27;module_id&#x27;: &#x27;5da6afac1a870b4165bb7b98&#x27;, &#x27;name&#x27;: &#x27;PCBSAP&#x27;, &#x27;nodes&#x27;: [&#x27;node.PCBSAP10&#x27;, &#x27;node.PCBSAP05&#x27;, &#x27;node.PCBSAP02&#x27;, &#x27;node.PCBSAP03&#x27;, &#x27;node.PCBSAP04&#x27;, &#x27;node.PCBSAP08&#x27;, &#x27;node.PCBSAP06&#x27;, &#x27;node.PCBSAP01&#x27;, &#x27;node.PCBSAP09&#x27;, &#x27;node.PCBSAP07&#x27;], &#x27;high_prior_metrics&#x27;: [], &#x27;low_prior_metrics&#x27;: [], &#x27;created_time&#x27;: 1571205036, &#x27;services&#x27;: []}, {&#x27;module_id&#x27;: &#x27;5da6b0391a870b4165bb7b9a&#x27;, &#x27;name&#x27;: &#x27;BCBSAP&#x27;, &#x27;nodes&#x27;: [&#x27;node.BCBSAP03&#x27;, &#x27;node.BCBSAP02&#x27;, &#x27;node.BCBSAP05&#x27;, &#x27;node.BCBSAP04&#x27;, &#x27;node.BCBSAP10&#x27;, &#x27;node.BCBSAP01&#x27;, &#x27;node.BCBSAP09&#x27;, &#x27;node.BCBSAP07&#x27;, &#x27;node.BCBSAP08&#x27;, &#x27;node.BCBSAP06&#x27;], &#x27;high_prior_metrics&#x27;: [], &#x27;low_prior_metrics&#x27;: [], &#x27;created_time&#x27;: 1571205177, &#x27;services&#x27;: []}, {&#x27;module_id&#x27;: &#x27;5da6b05c1a870b4165bb7b9c&#x27;, &#x27;name&#x27;: &#x27;PECPAP&#x27;, &#x27;nodes&#x27;: [&#x27;node.PECPAP02&#x27;, &#x27;node.PECPAP04&#x27;, &#x27;node.PECPAP03&#x27;, &#x27;node.PECPAP01&#x27;], &#x27;high_prior_metrics&#x27;: [], &#x27;low_prior_metrics&#x27;: [], &#x27;created_time&#x27;: 1571205212, &#x27;services&#x27;: []}]}}
 <br/></div></td></tr></tbody>
       <tbody class="passed results-table-row">
         <tr>
           <td class="col-result">Passed</td>
-          <td class="col-name">test_scene/test_02_new_alarm.py::TestNewBusiness::test_07_deleteservice</td>
-          <td>删除新建的业务</td>
-          <td class="col-time">2019-10-17 09:54:13.538447</td>
+          <td class="col-name">test_scene/test_02_config.py::TestNewBusiness::test_05_postServiceConfig</td>
+          <td>点击发布配置按钮【post】/api/service/5da9268f1a870b1d64762452</td>
+          <td class="col-time">2019-10-18 02:58:00.878267</td>
           <td class="col-duration">0.02</td></tr>
         <tr>
           <td class="extra" colspan="5">
             <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>【请求URL】：
-http://192.168.115.41:8080/api/service/5da83a441a870bd4511400b2
+http://192.168.115.41:8080/api/service/5da92a381a870b1d64762459
 【返回结果】：
-{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;}
+{&#x27;code&#x27;: 200, &#x27;msg&#x27;: &#x27;OK&#x27;, &#x27;data&#x27;: {&#x27;service_id&#x27;: &#x27;5da92a381a870b1d64762459&#x27;, &#x27;name&#x27;: &#x27;rqh_test&#x27;, &#x27;created_time&#x27;: 1571367480, &#x27;monitored_kpi&#x27;: [&#x27;kpi.test-661&#x27;], &#x27;modules&#x27;: [&#x27;5da6af651a870b4165bb7b94&#x27;], &#x27;alert_rules&#x27;: [{&#x27;duration&#x27;: 600, &#x27;type&#x27;: &#x27;frequency&#x27;, &#x27;kpi_min_thr&#x27;: 1, &#x27;frequency&#x27;: 5}], &#x27;receiver&#x27;: {&#x27;email&#x27;: [&#x27;test@qq.com&#x27;]}, &#x27;ips&#x27;: [], &#x27;success_codes&#x27;: []}}
 <br/></div></td></tr></tbody></table></body></html>

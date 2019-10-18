@@ -17,7 +17,7 @@ class TestNewBusiness(object):
 
     def test_01_postservice(self):
         '''新建业务--新建告警事件'''
-        test_01_BM_new_business.TestNewBusiness().test_01_postservice()
+        # test_01_BM_new_business.TestNewBusiness().test_01_postservice()
 
         url = config.base_url + "/api/event"
         headers = {'Content-Type': 'application/json'}
@@ -58,7 +58,7 @@ class TestNewBusiness(object):
         assert jobs["data"][0]["event_id"] == config.event_id
         assert jobs["data"][0]["service_id"] == config.service_id
         assert jobs["data"][0]["description"] == self.eventdesc
-        assert jobs["data"][0]["service_name"] == test_01_BM_new_business.TestNewBusiness.name
+        # assert jobs["data"][0]["service_name"] == test_01_BM_new_business.TestNewBusiness.name
 
     def test_04_getmodules(self):
         '''在告警列表中 --查询告警事件 - 点击查看按钮'''
