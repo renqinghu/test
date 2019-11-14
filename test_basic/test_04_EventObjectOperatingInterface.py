@@ -27,7 +27,7 @@ class TestEventInterface(object):
 
         config.service_id = jobs["data"]["events"][0]["service_id"]
 
-    def test_02_postapievent(self):
+    def test_02_postapievent(self) -> object:
         '''创建事件[post] /api/event'''
         url = config.base_url + "/api/event"
         headers = {'Content-Type': 'application/json'}
@@ -50,7 +50,7 @@ class TestEventInterface(object):
         }
         r = requests.post(url, data=json.dumps(data), headers=headers)
         jobs = r.json()
-        config.pprint(url, jobs,data)
+        config.pprint(url, jobs, data)
         assert jobs["code"] == 201
         assert jobs["msg"] == "Created"
         assert len(jobs["data"]) != 0
@@ -112,31 +112,6 @@ class TestEventInterface(object):
         assert jobs["msg"] == "OK"
         assert len(jobs["data"]) != 0
 
-    def test_05_deleteapievent_id(self):
-        '''删除事件[delete] /api/event/:event_id'''
-        url = config.base_url + "/api/event/" + config.event_id
-        headers = {'Content-Type': 'application/json'}
-
-        r = requests.delete(url, headers=headers)
-        jobs = r.json()
-        config.pprint(url, jobs)
-        assert jobs["code"] == 200
-        assert jobs["msg"] == "OK"
-
-    def test_06_getapievent(self):
-        '''获取事件列表[get] /api/event'''
-        url = config.base_url + "/api/event"
-        headers = {'Content-Type': 'application/json'}
-
-        r = requests.get(url, headers=headers)
-        jobs = r.json()
-        config.pprint(url, jobs)
-        assert jobs["code"] == 200
-        assert jobs["msg"] == "OK"
-        assert len(jobs["data"]) != 0
-        assert r.text.count("rqhtest业务更新定时分析") >= 0
-        assert r.text.count(config.event_id) == 0
-
     def test_06_putapievent_id(self):
         '''提交事件多维根因分析结果[put] /api/event/:event_id/fluxrank'''
         url = config.base_url + "/api/event/" + config.event_id + "/fluxrank"
@@ -155,6 +130,103 @@ class TestEventInterface(object):
         }
         r = requests.put(url, data=json.dumps(data), headers=headers)
         jobs = r.json()
-        config.pprint(url, jobs,data)
+        config.pprint(url, jobs, data)
         assert jobs["code"] == 200
         assert jobs["msg"] == "OK"
+
+    def test_07_getapieventsimplified(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_08_getapieventsimplifiedpage(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id + "?user=aiops&query=query&page=1&size=10&activate=true&sort_field=kpi_key&order=DESC"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_09_getapieventsimplifiedpage(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id + "?user=aiops&query=query&page=1&size=10&activate=false&sort_field=kpi_key&order=DESC"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_10_getapieventsimplifiedpage(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id + "?user=aiops&query=query&page=1&size=10&activate=false&sort_field=state. activate&order=DESC"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_11_getapieventsimplifiedpage(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id + "?user=aiops&query=query&page=1&size=10&activate=false&sort_field=state. train_progress&order=DESC"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_12_getapieventsimplifiedpage(self):
+        '''获取事件列表[get] /api/event/simplified'''
+        url = config.base_url + "/api/event/" + config.event_id + "?user=aiops&query=query&page=1&size=10&activate=false&sort_field=state. train_progress&order=ASC"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_13_deleteapievent_id(self) -> object:
+        '''删除事件[delete] /api/event/:event_id'''
+        url = config.base_url + "/api/event/" + config.event_id
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.delete(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+
+    def test_14_getapievent(self):
+        '''获取事件列表[get] /api/event'''
+        url = config.base_url + "/api/event"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+        assert r.text.count("rqhtest业务更新定时分析") >= 0
+        assert r.text.count(config.event_id) == 0

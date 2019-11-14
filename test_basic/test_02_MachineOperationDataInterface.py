@@ -7,7 +7,8 @@ import time
 
 class TestMachineNode(object):
     """
-    Test get a list of jobs from jenkins
+    http://192.168.115.51:3000/project/29/interface/api/3742
+    机器
     """
     node_key = "node.bztest001"
     modigynode_key = "node.bztest002"
@@ -205,3 +206,27 @@ class TestMachineNode(object):
         assert len(jobs["data"]) != 0
         assert r.text.count(self.node_key) == 0
         assert r.text.count(self.modigynode_key) == 0
+
+    def test_12_getapinodepage(self):
+        '''(获取机器指标列表)获取机器节点列表[get] /api/node/page'''
+        url = config.base_url + "/api/node/page"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
+
+    def test_13_getapinodepage(self):
+        '''(获取机器指标列表)获取机器节点列表[get] /api/node/page'''
+        url = config.base_url + "/api/node/page?query=node&page=1&size=1"
+        headers = {'Content-Type': 'application/json'}
+
+        r = requests.get(url, headers=headers)
+        jobs = r.json()
+        config.pprint(url, jobs)
+        assert jobs["code"] == 200
+        assert jobs["msg"] == "OK"
+        assert len(jobs["data"]) != 0
