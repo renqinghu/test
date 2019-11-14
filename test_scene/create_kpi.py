@@ -15,10 +15,10 @@ class TestCreateKPI(object):
 
     def test_01_postservice(self):
         '''新建业务[post] /api/service'''
-        url = config.base_url + "/api/kpi/kpi.test-661"
+        url = config.base_url + "/api/kpi/kpi.BS-junit__trans_count_total1"
         headers = {'Content-Type': 'application/json'}
         data = {
-            "name": "zyx-交易量",
+            "name": "kpi.BS-junit__trans_count_total1",
             "state": {
                 "retrain": False,
                 "concept_drift_time": 0,

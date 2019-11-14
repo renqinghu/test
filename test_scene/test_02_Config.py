@@ -77,6 +77,8 @@ class TestNewBusiness(object):
         data = {"name": test_01_BM_new_business.TestNewBusiness.name, "monitored_kpi": ["kpi.test-661"], "modules": ["5da6af651a870b4165bb7b94"],
                 "alert_rules": [{"duration": 600, "type": "frequency", "kpi_min_thr": 1, "frequency": 5}],
                 "receiver": {"email": ["test@qq.com"]}}
+        # data = {"name":test_01_BM_new_business.TestNewBusiness.name,"monitored_kpi":["kpi.test-661"],"modules":["5db29e771a870ba0355be777"],"alert_rules":[],"receiver":{"email_inherit":True,"email":["test@qq.com"]},"ips":[],"success_codes":[],"quoridor_id":""}
+        data = {"name":test_01_BM_new_business.TestNewBusiness.name,"monitored_kpi":["kpi.test-661"],"modules":["5da6af651a870b4165bb7b94"],"alert_rules":[],"receiver":{"email_inherit":True,"email":["zjinn@bizseer.com"]},"ips":[],"success_codes":[],"quoridor_id":"调用链标识","level":""}
         r = requests.post(url, data=json.dumps(data),headers=headers)
         jobs = r.json()
         config.pprint(url, jobs)
@@ -86,8 +88,4 @@ class TestNewBusiness(object):
         assert jobs["data"]["service_id"] == config.service_id
         assert jobs["data"]["name"] == test_01_BM_new_business.TestNewBusiness.name
         assert jobs["data"]["monitored_kpi"] == ["kpi.test-661"]
-        assert jobs["data"]["alert_rules"][0]["duration"] == 600
-        assert jobs["data"]["alert_rules"][0]["type"] == "frequency"
-        assert jobs["data"]["alert_rules"][0]["kpi_min_thr"] == 1
-        assert jobs["data"]["alert_rules"][0]["frequency"] == 5
-        assert jobs["data"]["receiver"]["email"] == ["test@qq.com"]
+        assert jobs["data"]["receiver"]["email"] == ["zjinn@bizseer.com"]
